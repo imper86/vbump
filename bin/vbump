@@ -1,0 +1,65 @@
+#!/usr/bin/env php
+<?php
+
+use PHLAK\SemVer\Version;
+
+$autoloaderPaths = [
+    __DIR__ . '/../../../autoload.php',
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/vendor/autoload.php',
+];
+
+foreach ($autoloaderPaths as $path) {
+    if (file_exists($path)) {
+        define('VBUMP_COMPOSER_AUTOLOADER', $path);
+        break;
+    }
+}
+
+if (!defined('VBUMP_COMPOSER_AUTOLOADER')) {
+    fwrite(STDERR, 'Composer not found.' . PHP_EOL);
+    die(1);
+}
+
+require VBUMP_COMPOSER_AUTOLOADER;
+
+$currentVersion = shell_exec('git describe --tags --abbrev=0');
+
+if ('fatal' === substr($currentVersion, 0, 5)) {
+    fwrite(STDERR, 'No git tag found' . PHP_EOL);
+    die(1);
+}
+
+try {
+    $version = new Version($currentVersion);
+    $prefix = substr($currentVersion, 0, 1);
+    $hasPrefix = in_array($prefix, ['v', 'V'], true);
+
+    fwrite(STDOUT, "Current version: {$currentVersion}" . PHP_EOL);
+} catch (Throwable $exception) {
+    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+    die(1);
+}
+
+$actionType = $argv[1] ?? null;
+
+switch ($actionType) {
+    case 'major':
+        $version->incrementMajor();
+        break;
+    case 'minor':
+        $version->incrementMinor();
+        break;
+    case 'patch':
+        $version->incrementPatch();
+        break;
+    default:
+        fwrite(STDOUT, "Unknown argument, no changes made" . PHP_EOL);
+        die(0);
+}
+
+$newVersion = ($hasPrefix ? $prefix : '') . $version->__toString();
+
+fwrite(STDOUT, "New version: {$newVersion}" . PHP_EOL);
+passthru("git tag {$newVersion}");
+passthru("git push origin {$newVersion}");
