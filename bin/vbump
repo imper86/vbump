@@ -9,6 +9,8 @@ $autoloaderPaths = [
     __DIR__ . '/vendor/autoload.php',
 ];
 
+fwrite(STDOUT, date('c') . PHP_EOL);
+
 foreach ($autoloaderPaths as $path) {
     if (file_exists($path)) {
         define('VBUMP_COMPOSER_AUTOLOADER', $path);
